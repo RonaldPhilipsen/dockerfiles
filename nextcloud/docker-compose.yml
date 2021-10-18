@@ -1,0 +1,49 @@
+version: '2'
+
+services:
+  db:
+    image: postgres:alpine
+    container_name: nextcloud_db
+    restart: always
+    volumes:
+      - db:/var/lib/postgresql/data
+    environment:
+     - POSTGRES_PASSWORD=${PG_PWD}
+     - POSTGRES_DB=${PG_DB}
+     - POSTGRES_USER=${PG_USR}
+
+  redis:
+    image: redis:alpine
+    container_name: nextcloud_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${RD_PWD}
+    volumes:
+      - redis:/data
+
+  nextcloud:
+    image: nextcloud:fpm
+    container_name: nextcloud
+    restart: always
+    links:
+     - db
+     - redis
+    volumes:
+     - /storage/nextcloud:/var/www/html    
+    environment:
+     - POSTGRES_PASSWORD=${PG_PWD}
+     - POSTGRES_DB=${PG_DB}
+     - POSTGRES_USER=${PG_USR}
+     - REDIS_HOST_PASSWORD=${RD_PWD}
+
+  web:
+    image: nginx:mainline-alpine
+    container_name: nginx
+    restart: always
+    ports:
+      - 8080:80
+    links:
+      - nextcloud
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    volumes_from:
+      - app
